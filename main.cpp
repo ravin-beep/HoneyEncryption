@@ -1,3 +1,4 @@
+
 #include <iostream>
 #include <string>
 #include <memory>
@@ -55,11 +56,9 @@ std::string encrypt_message(const std::string& plaintext, const std::string& pas
  * @brief Verify password and return plaintext or fake word
  * @param ciphertext The hex-encoded ciphertext
  * @param password The password to verify
- * @param originalPlaintext The original plaintext (for comparison)
- * @return true if password is correct, false otherwise
+ * @return true if password is correct (returns original plaintext), false otherwise (returns fake word)
  */
-bool password_verification(const std::string& ciphertext, const std::string& password, 
-                           const std::string& originalPlaintext) {
+bool decrypt_message(const std::string& ciphertext, const std::string& password, std::string& result) {
     try {
         // First, decrypt the ciphertext to get the seed
         std::vector<uint8_t> decryptedSeed = aes_module::decryptSeed(ciphertext, password);
@@ -70,18 +69,33 @@ bool password_verification(const std::string& ciphertext, const std::string& pas
         // Check if this seed exists in our stored mappings
         std::string plaintext = utils::loadMapping(seedHex);
         
-        if (!plaintext.empty() && plaintext == originalPlaintext) {
+        if (!plaintext.empty()) {
             // Password is correct - return the real plaintext
+            result = plaintext;
             return true;
         } else {
             // Password is incorrect - return a fake word
+            result = generate_fake_plaintext();
             return false;
         }
         
     } catch (const std::exception& e) {
-        // Decryption failed - password is incorrect
+        // Decryption failed - return a fake word
+        // This ensures no correctness signal is leaked
+        result = generate_fake_plaintext();
         return false;
     }
+}
+
+void displayMenu() {
+    std::cout << "\n======================================\n";
+    std::cout << "     HONEY ENCRYPTION SYSTEM\n";
+    std::cout << "======================================\n";
+    std::cout << "1. Encrypt Message\n";
+    std::cout << "2. Decrypt Message\n";
+    std::cout << "3. Exit\n";
+    std::cout << "======================================\n";
+    std::cout << "Enter choice: ";
 }
 
 void clearInputBuffer() {
@@ -95,20 +109,12 @@ std::string getPassword() {
     return password;
 }
 
-/**
- * @brief Main honey encryption flow
- * Prompts for plaintext and password, encrypts, then allows 3 attempts to verify
- */
-void honeyEncryptionFlow() {
+void encryptMessage() {
     std::string plaintext;
     std::string password;
     
-    std::cout << "\n======================================\n";
-    std::cout << "     HONEY ENCRYPTION SETUP\n";
-    std::cout << "======================================\n";
-    
-    // Step 1: Get the plaintext message
-    std::cout << "Enter plaintext message: ";
+    std::cout << "\n--- ENCRYPTION ---\n";
+    std::cout << "Enter plaintext: ";
     std::getline(std::cin, plaintext);
     
     if (plaintext.empty()) {
@@ -116,7 +122,6 @@ void honeyEncryptionFlow() {
         return;
     }
     
-    // Step 2: Get the correct password
     password = getPassword();
     
     if (password.empty()) {
@@ -124,81 +129,111 @@ void honeyEncryptionFlow() {
         return;
     }
     
-    // Step 3: Encrypt the message
-    std::string ciphertext;
     try {
-        ciphertext = encrypt_message(plaintext, password);
+        // Use the modular encrypt_message function
+        std::string ciphertext = encrypt_message(plaintext, password);
         
         std::cout << "\n--- ENCRYPTION SUCCESSFUL ---\n";
         std::cout << "Ciphertext (hex): " << ciphertext << "\n";
-        std::cout << "Message has been encrypted.\n";
+        std::cout << "Length: " << ciphertext.length() << " characters\n";
         
     } catch (const std::exception& e) {
         std::cout << "Encryption error: " << e.what() << "\n";
+    }
+}
+
+void decryptMessage() {
+    std::string ciphertext;
+    std::string password;
+    
+    std::cout << "\n--- DECRYPTION ---\n";
+    std::cout << "Enter ciphertext (hex): ";
+    std::getline(std::cin, ciphertext);
+    
+    if (ciphertext.empty()) {
+        std::cout << "Error: Ciphertext cannot be empty.\n";
         return;
     }
     
-    // Step 4: Password verification attempts (up to 3)
+    password = getPassword();
+    
+    if (password.empty()) {
+        std::cout << "Error: Password cannot be empty.\n";
+        return;
+    }
+    
+    // Allow up to 3 password attempts
     const int MAX_ATTEMPTS = 3;
     int attempts = 0;
     bool accessGranted = false;
     
-    std::cout << "\n======================================\n";
-    std::cout << "     PASSWORD VERIFICATION\n";
-    std::cout << "======================================\n";
-    std::cout << "You have " << MAX_ATTEMPTS << " attempts to verify your password.\n";
-    
     while (attempts < MAX_ATTEMPTS) {
         attempts++;
         
-        std::cout << "\n--- Attempt " << attempts << " of " << MAX_ATTEMPTS << " ---\n";
-        std::string inputPassword = getPassword();
-        
-        // Verify the password
-        if (password_verification(ciphertext, inputPassword, plaintext)) {
-            // Correct password
-            std::cout << "\n======================================\n";
-            std::cout << "     ACCESS GRANTED\n";
-            std::cout << "======================================\n";
-            std::cout << "Plaintext: " << plaintext << "\n";
-            std::cout << "Program terminated successfully.\n";
+        std::string result;
+        if (decrypt_message(ciphertext, password, result)) {
+            // Password is correct
+            std::cout << "\n--- DECRYPTION RESULT ---\n";
+            std::cout << "Plaintext: " << result << "\n";
             accessGranted = true;
             break;
         } else {
-            // Incorrect password - show fake plaintext (single word)
-            std::string fakeWord = generate_fake_plaintext();
+            // Password is incorrect - already shows fake word
             std::cout << "\n--- DECRYPTION RESULT ---\n";
-            std::cout << "Plaintext: " << fakeWord << "\n";
+            std::cout << "Plaintext: " << result << "\n";
             
             if (attempts < MAX_ATTEMPTS) {
                 std::cout << "Incorrect password. " << (MAX_ATTEMPTS - attempts) 
                           << " attempt(s) remaining.\n";
+                password = getPassword();
             }
         }
     }
     
-    // All attempts used
     if (!accessGranted) {
-        std::cout << "\n======================================\n";
-        std::cout << "     ACCESS DENIED\n";
-        std::cout << "======================================\n";
-        std::cout << "All " << MAX_ATTEMPTS << " attempts used.\n";
-        std::cout << "Program terminated.\n";
+        std::cout << "\nAll " << MAX_ATTEMPTS << " attempts used.\n";
     }
 }
 
 int main() {
+    int choice;
+    
     std::cout << "======================================\n";
     std::cout << "     HONEY ENCRYPTION SYSTEM\n";
     std::cout << "======================================\n";
     std::cout << "Security through deception:\n";
-    std::cout << "Every password attempt returns valid output.\n";
+    std::cout << "Every decryption returns valid output.\n";
     std::cout << "No correctness signal is leaked.\n";
     std::cout << "======================================\n";
     
-    // Run the honey encryption flow
-    honeyEncryptionFlow();
+    while (true) {
+        displayMenu();
+        
+        if (!(std::cin >> choice)) {
+            std::cout << "Invalid input. Please enter a number.\n";
+            std::cin.clear();
+            clearInputBuffer();
+            continue;
+        }
+        
+        clearInputBuffer();
+        
+        switch (choice) {
+            case 1:
+                encryptMessage();
+                break;
+            case 2:
+                decryptMessage();
+                break;
+            case 3:
+                std::cout << "Exiting Honey Encryption System. Goodbye!\n";
+                return 0;
+            default:
+                std::cout << "Invalid choice. Please try again.\n";
+        }
+    }
     
     return 0;
 }
+
 

@@ -1,0 +1,38 @@
+# Build outputs
+build/
+Release/
+Debug/
+
+# Compiled binaries
+*.o
+*.obj
+*.exe
+*.dll
+*.so
+*.dylib
+honey_encrypt
+
+# IDE files
+.vscode/
+.idea/
+*.suo
+*.user
+
+# Temporary files
+*.log
+*.tmp
+test_input.txt
+mappings.txt
+
+# PowerShell scripts that are duplicates
+build_new.ps1
+compile.ps1
+build2.bat
+
+# CMake files
+CMakeCache.txt
+CMakeFiles/
+cmake_install.cmake
+Makefile
+*.cmake
+
