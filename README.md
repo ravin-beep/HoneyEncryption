@@ -1,115 +1,134 @@
-# Honey Encryption System
+# Honey Encryption Full-Stack System
 
-A C++ implementation of Honey Encryption with Fake Plaintext Generation, configured for WSL (Windows Subsystem for Linux).
+A full-stack implementation of Honey Encryption with Fake Plaintext Generation. This system demonstrates deception-based cryptography where every decryption attempt produces meaningful output.
 
-## Project Overview
+## Architecture
 
-Honey Encryption is a security technique that returns plausible-looking fake plaintexts (honeywords) when decryption fails or wrong keys are used. This prevents attackers from knowing whether their decryption attempts were successful.
+```
+Frontend (React + TailwindCSS)
+        ↓
+REST API (FastAPI)
+        ↓
+Honey Encryption Module (Python)
+        ↓
+PostgreSQL Encrypted Storage
+```
 
-**Security Principle:** No correctness signal is leaked to the attacker.
+## Prerequisites
+
+- Python 3.9+
+- Node.js 18+
+- PostgreSQL 14+
+
+## Quick Start
+
+### 1. Database Setup
+
+```bash
+# Create PostgreSQL database
+createdb honey_encryption
+
+# Run the schema (or let the app create it automatically)
+psql -d honey_encryption -f database/schema.sql
+```
+
+### 2. Backend Setup
+
+```bash
+cd backend
+
+# Create virtual environment
+python -m venv venv
+source venv/bin/activate  # On Windows: venv\Scripts\activate
+
+# Install dependencies
+pip install -r requirements.txt
+
+# Start the server
+python main.py
+```
+
+The backend will run on http://localhost:8000
+
+### 3. Frontend Setup
+
+```bash
+cd frontend
+
+# Install dependencies
+npm install
+
+# Start development server
+npm run dev
+```
+
+The frontend will run on http://localhost:3000
+
+## Environment Variables
+
+Create a `.env` file in the `backend` directory:
+
+```env
+DATABASE_URL=postgresql://postgres:yourpassword@localhost:5432/honey_encryption
+HOST=0.0.0.0
+PORT=8000
+DEBUG=true
+```
+
+## API Endpoints
+
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/api/encrypt` | POST | Encrypt a message |
+| `/api/decrypt` | POST | Decrypt a message |
+| `/api/admin/stats` | GET | Get admin statistics |
+| `/api/messages` | GET | Get all encrypted messages |
+| `/api/admin/simulate-attack` | POST | Simulate brute force attack |
 
 ## Features
 
-- **AES-256-CBC Encryption** via OpenSSL
-- **SHA-256 Key Derivation** from password
-- **Distribution Transforming Encoder (DTE)** for seed mapping
-- **Two Fake Plaintext Generation Strategies:**
-  1. Frequency-based credentials (USERNAME/PASSWORD/EMAIL format)
-  2. Markov chain text generator
-- **No Correctness Signal** - every decryption returns valid output
+- **Message Encryption**: AES-256-CBC with PBKDF2 key derivation
+- **Honey Encryption**: Wrong passwords return believable fake plaintexts
+- **Fake Plaintext Generation**: Three formats (Chat, Credentials, Email)
+- **Admin Dashboard**: Real-time analytics and attack simulation
+- **Database Storage**: PostgreSQL for encrypted messages and logs
+
+## Security Principle
+
+Honey Encryption ensures that:
+1. Correct password → Real plaintext
+2. Incorrect password → Fake plaintext (indistinguishable from real)
+3. No correctness signal is leaked to attackers
 
 ## Project Structure
 
 ```
-HoneyEncryption/
-├── main.cpp              # CLI menu system
-├── aes_module.h/cpp      # AES-256-CBC encryption
-├── dte_module.h/cpp       # Distribution Transforming Encoder
-├── fake_generator.h/cpp   # Fake plaintext generation
-├── utils.h/cpp           # Utility functions (hex encoding, etc.)
-├── CMakeLists.txt        # CMake build configuration
-├── build.sh              # Linux/WSL build script
-└── README.md             # This file
+honey-encryption-system/
+├── backend/
+│   ├── main.py              # FastAPI application
+│   ├── api/routes.py        # API endpoints
+│   ├── crypto/
+│   │   ├── honey_crypto.py  # Encryption module
+│   │   └── fake_generator.py # Fake plaintext generation
+│   └── database/
+│       ├── models.py        # SQLAlchemy models
+│       └── db.py            # Database connection
+├── frontend/
+│   ├── src/
+│   │   ├── pages/          # React pages
+│   │   ├── services/       # API services
+│   │   └── App.jsx         # Main app component
+│   └── package.json
+└── database/
+    └── schema.sql           # PostgreSQL schema
 ```
 
-## Prerequisites (WSL)
+## Demonstration
 
-1. **Install OpenSSL development libraries:**
-   ```bash
-   sudo apt-get update
-   sudo apt-get install libssl-dev
-   ```
-
-2. **Install g++ (if not already installed):**
-   ```bash
-   sudo apt-get install g++
-   ```
-
-3. **Install CMake (optional, for CMake build):**
-   ```bash
-   sudo apt-get install cmake
-   ```
-
-## Building on WSL
-
-### Option 1: Using the build script
-```bash
-chmod +x build.sh
-./build.sh
-```
-
-### Option 2: Using CMake
-```bash
-mkdir -p build
-cd build
-cmake ..
-make
-```
-
-### Option 3: Direct compilation
-```bash
-g++ -o honey_encrypt -I. main.cpp aes_module.cpp dte_module.cpp fake_generator.cpp utils.cpp -lssl -lcrypto
-```
-
-## Running
-
-After building, run:
-```bash
-./honey_encrypt
-```
-
-## Usage
-
-The program provides a menu-based interface:
-
-1. **Encrypt Message** - Enter plaintext and password to encrypt
-2. **Decrypt Message** - Enter ciphertext and password to decrypt
-3. **Demonstrate Honey Effect** - Interactive demo showing honey encryption
-4. **Exit** - Exit the program
-
-### Demonstration
-
-Select option 3 to see the honey encryption in action:
-
-1. Enter a secret message to encrypt
-2. Enter a CORRECT password for encryption
-3. The program encrypts the message and shows the ciphertext
-4. Decrypt with the CORRECT password → returns the real message
-5. Decrypt with WRONG passwords → returns believable FAKE plaintexts
-
-The key insight: An attacker cannot distinguish between correct and incorrect password attempts because every decryption returns valid-looking output!
-
-## Security Note
-
-In a real-world deployment:
-- The DTE mapping should be stored persistently (database, file)
-- The fake plaintext generator should be trained on actual data
-- Additional security measures should be implemented
-
-## Dependencies
-
-- OpenSSL (libssl-dev)
-- C++17 compatible compiler (g++)
+1. **Encrypt a message**: Go to the Encrypt page, enter a plaintext and password
+2. **Decrypt with correct password**: Get the original message
+3. **Decrypt with wrong password**: Get a fake plaintext - the attacker cannot tell it's fake!
+4. **Simulate attack**: Use the admin dashboard to simulate a brute force attack
 
 ## License
 
